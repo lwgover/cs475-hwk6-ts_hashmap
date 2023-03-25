@@ -14,6 +14,7 @@ typedef struct ts_hashmap_t {
    ts_entry_t **table;
    int capacity;
    int size;
+   pthread_mutex_t** locks;
 } ts_hashmap_t;
 
 // function declarations
@@ -22,4 +23,6 @@ int get(ts_hashmap_t *map, int key);
 int put(ts_hashmap_t *map, int key, int value);
 int del(ts_hashmap_t *map, int key);
 double lf(ts_hashmap_t *map);
+void deallocate_map(ts_hashmap_t *map);
+unsigned int hash(ts_hashmap_t *map,int num);
 void printmap(ts_hashmap_t *map);
