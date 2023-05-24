@@ -54,24 +54,26 @@ ts_hashmap_t *initmap(int capacity) {
  * @return the value associated with the given key, or INT_MAX if key not found
  */
 int get(ts_hashmap_t *map, int key) {
+	printf("doing get: \n");
 	if (map == NULL) { //if hashmap is empty, don't run
 		return INT_MAX;
 	}
 	unsigned int location = hash(map, key);
 
-	pthread_mutex_lock(map->locks[location]);
+	pthread_mutex_lock(map->locks[location]);printf("lock[%u] is locked by get\n",location); 
 	ts_entry_t *currEntry = map->table[hash(map,key)]; // get the right spot in hashtable
 
 	while (currEntry != NULL) {
+		printf("get while\n");
 		if (currEntry->key == key) { //key Found
 			int newValue = currEntry->value;
-			pthread_mutex_unlock(map->locks[location]);
+			printf("lock[%u] is unlocked by get\n",location); pthread_mutex_unlock(map->locks[location]);
 			return newValue;
 		}
 		currEntry = currEntry->next;
 
 	}
-	pthread_mutex_unlock(map->locks[location]);
+	printf("lock[%u] is unlocked by get\n",location); pthread_mutex_unlock(map->locks[location]);
 	return INT_MAX; //Not Found, return INT_MAX
 }
 
@@ -83,6 +85,7 @@ int get(ts_hashmap_t *map, int key) {
  * @return old associated value, or INT_MAX if the key was new
  */
 int put(ts_hashmap_t *map, int key, int value) {
+	printf("doing put: \n");
 	if (map == NULL) { // if there's no map, don't even try
 		return INT_MAX;
 	}
@@ -91,18 +94,21 @@ int put(ts_hashmap_t *map, int key, int value) {
 
 	int currValue = get(map, key);
 	pthread_mutex_lock(map->locks[location]);
+	printf("lock[%u] is locked by put\n",location); 
 	if(currValue != INT_MAX){
 		ts_entry_t *currEntry = map->table[hash(map,key)]; // get the right spot in hashtable
 
 		while (currEntry != NULL) {
+			printf("put while\n");
 			if (currEntry->key == key) { //key Found
 				int oldValue = currEntry->value;
 				currEntry->value = value;
-				pthread_mutex_unlock(map->locks[location]);
+				printf("lock[%u] is unlocked by put\n",location); pthread_mutex_unlock(map->locks[location]);
 				return oldValue;
 			}
 			currEntry = currEntry->next;
 		}
+		pthread_mutex_unlock(map->locks[location]);
 		return currValue;
 	}
 
@@ -114,10 +120,11 @@ int put(ts_hashmap_t *map, int key, int value) {
 
 	map->table[location] = newEntry;
 	pthread_mutex_lock(map->size_lock); // lock to modify size
+	printf("lock[%u]->size is locked\n",location); 
 	map->size++;
-	pthread_mutex_unlock(map->size_lock);
+	printf("lock[%u]->size is unlocked\n",location); pthread_mutex_unlock(map->size_lock);
 
-	pthread_mutex_unlock(map->locks[location]);
+	printf("lock[%u] is unlocked by put\n",location); pthread_mutex_unlock(map->locks[location]);
 	return INT_MAX; //No old value was associated with this new key value pair
 }
 
@@ -128,6 +135,7 @@ int put(ts_hashmap_t *map, int key, int value) {
  * @return the value associated with the given key, or INT_MAX if key not found
  */
 int del(ts_hashmap_t *map, int key) {
+	printf("doing del: \n");
 	if (map == NULL) { // don't run on a null map, obviously
 		return INT_MAX;
 	}
@@ -138,40 +146,43 @@ int del(ts_hashmap_t *map, int key) {
 	if(currValue == INT_MAX){ // if value is not in the list
 		return INT_MAX;
 	}
-	pthread_mutex_lock(map->locks[location]);
+	pthread_mutex_lock(map->locks[location]); printf("lock[%u] is locked by del\n",location);
 	ts_entry_t *currEntry = map->table[location]; // get the first entry for this hash in hashtable
 
 	if( currEntry->key == key){
 		map->table[location] = currEntry->next;
 
 		pthread_mutex_lock(map->size_lock); //lock to modify size
+		printf("lock[%u]->size is locked\n",location); 
 		map->size--;
-		pthread_mutex_unlock(map->size_lock);
+		printf("lock[%u]->size is unlocked\n",location); pthread_mutex_unlock(map->size_lock);
 
 		int returnValue = currEntry->value;
 		free(currEntry); // free deleted entry
-		pthread_mutex_unlock(map->locks[location]);
+		printf("lock[%u] is unlocked by del\n",location); pthread_mutex_unlock(map->locks[location]);
 		return returnValue;	
 	}
 	ts_entry_t *last = currEntry;
 	currEntry = currEntry->next;
 	while (currEntry != NULL) {
+		printf("del while\n");
 		if (currEntry->key == key) { //key Found
 			last->next = currEntry->next;
 
 			pthread_mutex_lock(map->size_lock); // lock to modify the size
+			printf("lock[%u]->size is locked\n",location); 
 			map->size--;
-			pthread_mutex_unlock(map->size_lock);
+			printf("lock[%u]->size is unlocked\n",location); pthread_mutex_unlock(map->size_lock);
 
 			int returnValue = currEntry->value;
 			free(currEntry); // free deleted entry
-			pthread_mutex_unlock(map->locks[location]);
+			printf("lock[%u] is unlocked by del\n",location); pthread_mutex_unlock(map->locks[location]);
 			return returnValue;
 		}
 		last = currEntry;
 		currEntry = currEntry->next;
 	}
-	pthread_mutex_unlock(map->locks[location]);
+	printf("lock[%u] is unlocked by del\n",location); pthread_mutex_unlock(map->locks[location]);
 	return INT_MAX; //No old value was associated with this new key value pair	
 }
 
